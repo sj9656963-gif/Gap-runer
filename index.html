@@ -1,0 +1,1729 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>틈새 통과 게임</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html, body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            position: fixed;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: 'Arial', sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+
+        #gameContainer {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+        }
+
+        canvas {
+            display: block;
+            background: linear-gradient(180deg, #87CEEB 0%, #E0F6FF 100%);
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+        }
+
+        /* PC 모드 - 창 모드 (기본) */
+        @media (min-width: 769px) {
+            canvas {
+                width: 800px !important;
+                height: 600px !important;
+                border-radius: 10px;
+            }
+        }
+
+        /* 모바일 모드 - 전체화면 */
+        @media (max-width: 768px) {
+            html, body {
+                background: linear-gradient(180deg, #7B68EE 0%, #5B4FCF 100%);
+                width: 100vw;
+                height: 100vh;
+                height: -webkit-fill-available; /* iOS Safari */
+            }
+
+            #gameContainer {
+                width: 100vw;
+                height: 100vh;
+                height: -webkit-fill-available; /* iOS Safari */
+            }
+
+            canvas {
+                width: 100vw !important;
+                height: 100vh !important;
+                height: -webkit-fill-available !important; /* iOS Safari */
+            }
+        }
+
+        /* PC 전체화면 모드 */
+        body.fullscreen-mode canvas {
+            width: 100% !important;
+            height: 100% !important;
+            border-radius: 0 !important;
+        }
+
+        #gameInfo {
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            color: white;
+            z-index: 998;
+            background: rgba(0, 0, 0, 0.6);
+            padding: 10px 15px;
+            border-radius: 10px;
+            font-size: 16px;
+        }
+
+        #gameInfo div {
+            margin: 5px 0;
+            white-space: nowrap;
+        }
+
+        /* 모바일에서 폰트 크기 조정 */
+        @media (max-width: 768px) {
+            #gameInfo {
+                font-size: 14px;
+                padding: 8px 12px;
+            }
+        }
+
+        .controls {
+            display: none; /* 터치로 점프 메시지 숨김 */
+        }
+
+        canvas {
+            cursor: pointer;
+            touch-action: none; /* 터치 스크롤 방지 */
+        }
+
+        #gameOver {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0,0,0,0.9);
+            color: white;
+            padding: 30px 40px;
+            border-radius: 20px;
+            display: none;
+            text-align: center;
+            max-width: 90%;
+            width: 350px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+        }
+
+        #gameOver h2 {
+            font-size: 42px;
+            margin-bottom: 15px;
+            font-weight: bold;
+        }
+
+        #gameOver p {
+            font-size: 20px;
+            margin: 8px 0;
+            line-height: 1.4;
+        }
+
+        #finalTime {
+            font-size: 28px;
+            font-weight: bold;
+            color: #FFD700;
+        }
+
+        #newRecord {
+            color: #00ff00;
+            font-size: 18px;
+            margin-top: 5px;
+        }
+
+        #restartBtn {
+            margin-top: 20px;
+            padding: 15px 40px;
+            font-size: 20px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        #restartBtn:hover {
+            background: #764ba2;
+        }
+
+        /* UI 버튼들 */
+        .ui-buttons {
+            position: fixed;
+            top: 80px;
+            right: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            z-index: 999;
+        }
+
+        .ui-btn {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            border: none;
+            background: rgba(255, 255, 255, 0.9);
+            cursor: pointer;
+            font-size: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+            transition: transform 0.2s;
+        }
+
+        .ui-btn:active {
+            transform: scale(0.95);
+        }
+
+        /* 로딩 화면 */
+        #loadingScreen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+        }
+
+        #loadingScreen h1 {
+            color: white;
+            font-size: 48px;
+            margin-bottom: 30px;
+        }
+
+        .loading-spinner {
+            width: 60px;
+            height: 60px;
+            border: 6px solid rgba(255,255,255,0.3);
+            border-top: 6px solid white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* 일시정지 화면 */
+        #pauseScreen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.7);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        #pauseScreen h2 {
+            color: white;
+            font-size: 48px;
+        }
+
+        /* 튜토리얼 화면 */
+        #tutorialScreen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.9);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1001;
+        }
+
+        .tutorial-content {
+            background: white;
+            padding: 40px;
+            border-radius: 20px;
+            max-width: 500px;
+            text-align: center;
+        }
+
+        .tutorial-content h2 {
+            color: #667eea;
+            margin-bottom: 20px;
+        }
+
+        .tutorial-content p {
+            font-size: 18px;
+            margin: 15px 0;
+            line-height: 1.6;
+        }
+
+        .tutorial-content button {
+            margin-top: 20px;
+            padding: 15px 40px;
+            font-size: 20px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+
+        /* 최고 기록 표시 */
+        #bestScore {
+            color: #FFD700;
+            font-size: 18px;
+            margin-top: 10px;
+        }
+
+        /* 업적 알림 */
+        #achievementNotification {
+            position: fixed;
+            top: 100px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: linear-gradient(135deg, #FFD700, #FFA500);
+            color: white;
+            padding: 20px 40px;
+            border-radius: 15px;
+            font-size: 24px;
+            font-weight: bold;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.4);
+            display: none;
+            z-index: 2000;
+            animation: slideDown 0.5s ease-out;
+        }
+
+        @keyframes slideDown {
+            from {
+                top: -100px;
+                opacity: 0;
+            }
+            to {
+                top: 100px;
+                opacity: 1;
+            }
+        }
+
+        /* 반응형 디자인 */
+        @media (max-width: 600px) {
+            canvas {
+                max-width: 100vw;
+                max-height: 70vh;
+            }
+        }
+
+    </style>
+</head>
+<body>
+    <!-- 로딩 화면 -->
+    <div id="loadingScreen">
+        <img id="loadingCharacter" src="character.png" style="width: 150px; height: 150px; margin-bottom: 20px;">
+        <h1 style="color: white; font-size: 48px; margin-bottom: 10px;">틈새 통과 게임</h1>
+        <div class="loading-spinner"></div>
+        <p style="color: white; margin-top: 20px;">로딩 중...</p>
+    </div>
+
+    <!-- 튜토리얼 화면 -->
+    <div id="tutorialScreen">
+        <div class="tutorial-content">
+            <h2>게임 방법</h2>
+            <p>📱 <strong>화면을 터치</strong>하여 점프하세요!</p>
+            <p>⏱️ 장애물을 피하며 최대한 오래 생존하세요</p>
+            <p>📈 시간이 지날수록 난이도가 올라갑니다</p>
+            <p>🏆 최고 기록에 도전하세요!</p>
+            <button id="tutorialCloseBtn">시작하기!</button>
+        </div>
+    </div>
+
+    <!-- 일시정지 화면 -->
+    <div id="pauseScreen">
+        <h2>⏸️ 일시정지</h2>
+    </div>
+
+    <!-- 업적 알림 -->
+    <div id="achievementNotification"></div>
+
+    <!-- UI 버튼들 -->
+    <div class="ui-buttons">
+        <button class="ui-btn" id="pauseBtn" title="일시정지">⏸️</button>
+        <button class="ui-btn" id="fullscreenToggleBtn" title="전체화면 토글" style="display: none;">⛶</button>
+    </div>
+
+
+    <div id="gameContainer">
+        <canvas id="gameCanvas" width="400" height="600"></canvas>
+        <div id="gameInfo">
+            <div id="difficulty">난이도: 1단계</div>
+            <div id="bestScore">최고 기록: 0.000초</div>
+        </div>
+        <div class="controls">
+            터치로 점프!
+        </div>
+        <div id="gameOver">
+            <h2>게임 오버!</h2>
+            <p id="finalTime"></p>
+            <p id="newRecord" style="color: #FFD700; display: none;">🎉 신기록!</p>
+            <p id="achievementSummary"></p>
+            <button id="restartBtn">다시 시작</button>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // 디바이스 감지 (모바일 vs PC)
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || window.innerWidth < 768;
+
+        // 디바이스별 속도 배율
+        const speedMultiplierDevice = isMobile ? 3.5 : 1; // 모바일은 3.5배 더 빠르게
+
+        // PC 전체화면 토글 버튼 표시
+        if (!isMobile) {
+            document.getElementById('fullscreenToggleBtn').style.display = 'block';
+        }
+
+        // 캔버스를 전체 화면에 맞춤
+        function resizeCanvas() {
+            if (isMobile) {
+                // 모바일: 항상 전체화면
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight;
+            } else {
+                // PC: 전체화면 모드인지 확인
+                const isFullscreenMode = document.body.classList.contains('fullscreen-mode');
+                if (isFullscreenMode) {
+                    canvas.width = window.innerWidth;
+                    canvas.height = window.innerHeight;
+                } else {
+                    // 창 모드: 800x600
+                    canvas.width = 800;
+                    canvas.height = 600;
+                }
+            }
+        }
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
+
+        // 오디오 설정 (Web Audio API 사용)
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        const audioContext = new AudioContext();
+        let bgmGainNode = null;
+        let bgmSource = null;
+        let isMusicPlaying = false;
+
+        // 배경음악 생성 (밝고 경쾌한 멜로디)
+        function createBackgroundMusic() {
+            if (isMusicPlaying) return;
+
+            // 오디오 컨텍스트 재개
+            audioContext.resume();
+
+            isMusicPlaying = true;
+            bgmGainNode = audioContext.createGain();
+            bgmGainNode.gain.value = 0.08;
+            bgmGainNode.connect(audioContext.destination);
+
+            // 더 밝고 경쾌한 멜로디: C-E-G-C-G-E-C-D-E
+            const melody = [
+                523.25, 659.25, 783.99, 1046.50, 783.99, 659.25, 523.25, 587.33,
+                659.25, 783.99, 659.25, 523.25, 587.33, 659.25, 523.25, 659.25
+            ];
+
+            // 베이스 라인 (옥타브 아래)
+            const bassLine = [
+                261.63, 329.63, 392.00, 523.25, 392.00, 329.63, 261.63, 293.66,
+                329.63, 392.00, 329.63, 261.63, 293.66, 329.63, 261.63, 329.63
+            ];
+
+            let noteIndex = 0;
+
+            function playNote() {
+                if (!isMusicPlaying) return;
+
+                // 멜로디 파트
+                const osc1 = audioContext.createOscillator();
+                osc1.type = 'triangle';
+                osc1.frequency.value = melody[noteIndex];
+
+                const gain1 = audioContext.createGain();
+                gain1.gain.setValueAtTime(0.04, audioContext.currentTime);
+                gain1.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.35);
+
+                osc1.connect(gain1);
+                gain1.connect(bgmGainNode);
+
+                osc1.start(audioContext.currentTime);
+                osc1.stop(audioContext.currentTime + 0.35);
+
+                // 베이스 파트
+                const osc2 = audioContext.createOscillator();
+                osc2.type = 'sine';
+                osc2.frequency.value = bassLine[noteIndex];
+
+                const gain2 = audioContext.createGain();
+                gain2.gain.setValueAtTime(0.02, audioContext.currentTime);
+                gain2.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.35);
+
+                osc2.connect(gain2);
+                gain2.connect(bgmGainNode);
+
+                osc2.start(audioContext.currentTime);
+                osc2.stop(audioContext.currentTime + 0.35);
+
+                noteIndex = (noteIndex + 1) % melody.length;
+                setTimeout(playNote, 350);
+            }
+
+            playNote();
+        }
+
+        // 죽음 효과음
+        function playDeathSound() {
+            audioContext.resume(); // 모바일 오디오 재생 허용
+
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+
+            oscillator.type = 'sawtooth';
+            oscillator.frequency.setValueAtTime(400, audioContext.currentTime);
+            oscillator.frequency.exponentialRampToValueAtTime(50, audioContext.currentTime + 0.5);
+
+            gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+
+            oscillator.start(audioContext.currentTime);
+            oscillator.stop(audioContext.currentTime + 0.5);
+        }
+
+        // 점프 효과음
+        function playJumpSound() {
+            audioContext.resume(); // 모바일 오디오 재생 허용
+
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+
+            oscillator.type = 'sine';
+            oscillator.frequency.setValueAtTime(600, audioContext.currentTime);
+            oscillator.frequency.exponentialRampToValueAtTime(300, audioContext.currentTime + 0.1);
+
+            gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1);
+
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+
+            oscillator.start(audioContext.currentTime);
+            oscillator.stop(audioContext.currentTime + 0.1);
+        }
+
+        // 게임 변수
+        let gameTime = 0;
+        let isGameOver = false;
+        let gameStarted = false;
+        let isPaused = false;
+        let firstJumpMade = false; // 첫 점프 여부
+        let startTime = Date.now();
+        let lastFrameTime = Date.now();
+        let pauseStartTime = 0;
+        let totalPauseTime = 0;
+
+        // 사운드 설정
+        let soundEnabled = true; // 항상 ON
+
+        // 로컬 스토리지 관리
+        const STORAGE_KEY = 'jumpGameData';
+        let bestScore = 0;
+        let unlockedAchievements = [];
+
+        // 업적 정의
+        const achievements = [
+            { id: 'survivor_10', name: '생존자', description: '10초 생존', time: 10, unlocked: false },
+            { id: 'survivor_30', name: '도전자', description: '30초 생존', time: 30, unlocked: false },
+            { id: 'survivor_60', name: '전문가', description: '60초 생존', time: 60, unlocked: false },
+            { id: 'survivor_90', name: '마스터', description: '90초 생존', time: 90, unlocked: false },
+            { id: 'survivor_120', name: '전설', description: '120초 생존', time: 120, unlocked: false }
+        ];
+
+        // 파티클 배열
+        let particles = [];
+
+        // 별 배열 (한 번만 생성)
+        let stars = [];
+        function initStars() {
+            stars = [];
+            for (let i = 0; i < 100; i++) {
+                stars.push({
+                    x: Math.random() * canvas.width,
+                    y: Math.random() * canvas.height,
+                    radius: Math.random() * 1.5 + 0.5,
+                    opacity: Math.random() * 0.5 + 0.5
+                });
+            }
+        }
+
+        // 별 그리기
+        function drawStars() {
+            if (stars.length === 0) initStars();
+
+            stars.forEach(star => {
+                ctx.fillStyle = `rgba(255, 255, 255, ${star.opacity})`;
+                ctx.beginPath();
+                ctx.arc(star.x, star.y, star.radius, 0, Math.PI * 2);
+                ctx.fill();
+            });
+        }
+
+        // 노을 구름 그리기
+        function drawSunsetClouds() {
+            // 주황-분홍빛 구름들
+            ctx.fillStyle = 'rgba(255, 150, 100, 0.4)';
+
+            // 첫 번째 구름 (하단 좌측)
+            ctx.beginPath();
+            ctx.arc(80, canvas.height - 120, 50, 0, Math.PI * 2);
+            ctx.arc(120, canvas.height - 130, 60, 0, Math.PI * 2);
+            ctx.arc(160, canvas.height - 120, 50, 0, Math.PI * 2);
+            ctx.fill();
+
+            // 두 번째 구름 (하단 중앙)
+            ctx.fillStyle = 'rgba(255, 120, 150, 0.35)';
+            ctx.beginPath();
+            ctx.arc(200, canvas.height - 80, 40, 0, Math.PI * 2);
+            ctx.arc(235, canvas.height - 85, 55, 0, Math.PI * 2);
+            ctx.arc(270, canvas.height - 80, 45, 0, Math.PI * 2);
+            ctx.fill();
+
+            // 세 번째 구름 (하단 우측)
+            ctx.fillStyle = 'rgba(255, 180, 120, 0.3)';
+            ctx.beginPath();
+            ctx.arc(320, canvas.height - 100, 45, 0, Math.PI * 2);
+            ctx.arc(360, canvas.height - 105, 50, 0, Math.PI * 2);
+            ctx.fill();
+
+            // 작은 구름들
+            ctx.fillStyle = 'rgba(255, 200, 150, 0.25)';
+            ctx.beginPath();
+            ctx.arc(40, canvas.height - 60, 30, 0, Math.PI * 2);
+            ctx.arc(65, canvas.height - 65, 35, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        // 우주 별 배열 (더 많이)
+        let spaceStars = [];
+        function initSpaceStars() {
+            spaceStars = [];
+            // 200개의 별 (일반 밤하늘보다 더 많이)
+            for (let i = 0; i < 200; i++) {
+                spaceStars.push({
+                    x: Math.random() * canvas.width,
+                    y: Math.random() * canvas.height,
+                    radius: Math.random() * 2 + 0.3,
+                    opacity: Math.random() * 0.8 + 0.2,
+                    twinkleSpeed: Math.random() * 2 + 1
+                });
+            }
+        }
+
+        // 우주 별 그리기 (반짝임 효과)
+        function drawSpaceStars() {
+            if (spaceStars.length === 0) initSpaceStars();
+
+            const time = Date.now() / 1000;
+
+            spaceStars.forEach(star => {
+                const twinkle = (Math.sin(time * star.twinkleSpeed) + 1) / 2; // 0~1 사이 값
+                const currentOpacity = star.opacity * (0.5 + twinkle * 0.5);
+
+                ctx.fillStyle = `rgba(255, 255, 255, ${currentOpacity})`;
+                ctx.beginPath();
+                ctx.arc(star.x, star.y, star.radius, 0, Math.PI * 2);
+                ctx.fill();
+
+                // 밝은 별은 빛나는 효과
+                if (star.radius > 1.5) {
+                    ctx.shadowBlur = 5;
+                    ctx.shadowColor = `rgba(255, 255, 255, ${currentOpacity})`;
+                    ctx.fill();
+                    ctx.shadowBlur = 0;
+                }
+            });
+        }
+
+        // 행성들 그리기
+        function drawPlanets() {
+            // 토성 (고리가 있는 행성) - 우측 상단
+            const saturnX = canvas.width - 100;
+            const saturnY = 80;
+            const saturnRadius = 35;
+
+            // 토성 본체 (황금빛)
+            const saturnGradient = ctx.createRadialGradient(saturnX - 10, saturnY - 10, 5, saturnX, saturnY, saturnRadius);
+            saturnGradient.addColorStop(0, '#f4d03f');
+            saturnGradient.addColorStop(0.7, '#d4a017');
+            saturnGradient.addColorStop(1, '#8b6914');
+            ctx.fillStyle = saturnGradient;
+            ctx.beginPath();
+            ctx.arc(saturnX, saturnY, saturnRadius, 0, Math.PI * 2);
+            ctx.fill();
+
+            // 토성 고리
+            ctx.strokeStyle = 'rgba(200, 180, 140, 0.7)';
+            ctx.lineWidth = 8;
+            ctx.beginPath();
+            ctx.ellipse(saturnX, saturnY, saturnRadius + 20, saturnRadius / 2.5, Math.PI / 6, 0, Math.PI * 2);
+            ctx.stroke();
+
+            ctx.strokeStyle = 'rgba(180, 160, 120, 0.5)';
+            ctx.lineWidth = 5;
+            ctx.beginPath();
+            ctx.ellipse(saturnX, saturnY, saturnRadius + 28, saturnRadius / 2.2, Math.PI / 6, 0, Math.PI * 2);
+            ctx.stroke();
+
+            // 화성 (붉은 행성) - 좌측 중앙
+            const marsX = 60;
+            const marsY = canvas.height / 2;
+            const marsRadius = 25;
+
+            const marsGradient = ctx.createRadialGradient(marsX - 8, marsY - 8, 3, marsX, marsY, marsRadius);
+            marsGradient.addColorStop(0, '#ff6b6b');
+            marsGradient.addColorStop(0.6, '#d63031');
+            marsGradient.addColorStop(1, '#8b0000');
+            ctx.fillStyle = marsGradient;
+            ctx.beginPath();
+            ctx.arc(marsX, marsY, marsRadius, 0, Math.PI * 2);
+            ctx.fill();
+
+            // 지구 - 우측 하단
+            const earthX = canvas.width - 70;
+            const earthY = canvas.height - 90;
+            const earthRadius = 40;
+
+            // 지구 본체 (파란색-초록색)
+            const earthGradient = ctx.createRadialGradient(earthX - 10, earthY - 10, 5, earthX, earthY, earthRadius);
+            earthGradient.addColorStop(0, '#87ceeb');    // 밝은 하늘색
+            earthGradient.addColorStop(0.4, '#4a90e2');  // 바다색
+            earthGradient.addColorStop(0.7, '#2e5f8a');  // 깊은 파랑
+            earthGradient.addColorStop(1, '#1a3a52');    // 가장자리
+            ctx.fillStyle = earthGradient;
+            ctx.beginPath();
+            ctx.arc(earthX, earthY, earthRadius, 0, Math.PI * 2);
+            ctx.fill();
+
+            // 대륙 (초록-갈색)
+            ctx.fillStyle = 'rgba(76, 175, 80, 0.7)';
+
+            // 첫 번째 대륙
+            ctx.beginPath();
+            ctx.ellipse(earthX - 10, earthY - 15, 12, 8, Math.PI / 4, 0, Math.PI * 2);
+            ctx.fill();
+
+            // 두 번째 대륙
+            ctx.beginPath();
+            ctx.ellipse(earthX + 15, earthY, 10, 15, -Math.PI / 6, 0, Math.PI * 2);
+            ctx.fill();
+
+            // 세 번째 작은 대륙
+            ctx.beginPath();
+            ctx.ellipse(earthX - 5, earthY + 18, 8, 6, Math.PI / 3, 0, Math.PI * 2);
+            ctx.fill();
+
+            // 구름 (흰색)
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+            ctx.beginPath();
+            ctx.ellipse(earthX + 5, earthY - 8, 6, 4, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.beginPath();
+            ctx.ellipse(earthX - 15, earthY + 10, 5, 3, Math.PI / 4, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        // 달 그리기
+        function drawMoon() {
+            const moonX = 80;
+            const moonY = 100;
+            const moonRadius = 40;
+
+            // 달 본체 (밝은 회백색)
+            const moonGradient = ctx.createRadialGradient(moonX - 10, moonY - 10, 5, moonX, moonY, moonRadius);
+            moonGradient.addColorStop(0, '#f5f5f5');
+            moonGradient.addColorStop(0.6, '#d3d3d3');
+            moonGradient.addColorStop(1, '#a9a9a9');
+            ctx.fillStyle = moonGradient;
+            ctx.beginPath();
+            ctx.arc(moonX, moonY, moonRadius, 0, Math.PI * 2);
+            ctx.fill();
+
+            // 달 표면 크레이터들
+            ctx.fillStyle = 'rgba(150, 150, 150, 0.3)';
+
+            // 큰 크레이터
+            ctx.beginPath();
+            ctx.arc(moonX + 10, moonY - 5, 12, 0, Math.PI * 2);
+            ctx.fill();
+
+            // 중간 크레이터들
+            ctx.beginPath();
+            ctx.arc(moonX - 12, moonY + 10, 8, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.beginPath();
+            ctx.arc(moonX + 15, moonY + 15, 6, 0, Math.PI * 2);
+            ctx.fill();
+
+            // 작은 크레이터들
+            ctx.beginPath();
+            ctx.arc(moonX - 8, moonY - 15, 5, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.beginPath();
+            ctx.arc(moonX + 5, moonY + 8, 4, 0, Math.PI * 2);
+            ctx.fill();
+
+            // 달 빛 효과
+            ctx.shadowBlur = 15;
+            ctx.shadowColor = 'rgba(255, 255, 255, 0.5)';
+            ctx.beginPath();
+            ctx.arc(moonX, moonY, moonRadius, 0, Math.PI * 2);
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            ctx.shadowBlur = 0;
+        }
+
+        // 관측 가능한 우주 그리기 (타원형 - 시간에 따라 축소)
+        function drawObservableUniverse() {
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+
+            // 25단계에 진입한 시간 계산 (240초부터 25단계 시작)
+            const elapsedTime = gameStarted ? (Date.now() - startTime - totalPauseTime) / 1000 : 0;
+            const timeIn25Stage = Math.max(0, elapsedTime - 240); // 240초 = 24단계 끝
+
+            // 우주 크기가 시간에 따라 축소 (60초에 걸쳐 점으로 축소)
+            const shrinkProgress = Math.min(timeIn25Stage / 60, 1); // 0~1
+            const sizeMultiplier = 1 - shrinkProgress; // 1 -> 0
+
+            let radiusX = canvas.width * 0.45 * sizeMultiplier;
+            let radiusY = canvas.height * 0.35 * sizeMultiplier;
+
+            // 완전히 축소되면 그리지 않음 (흰색 배경만)
+            if (sizeMultiplier <= 0.01) return;
+
+            // 타원형 클리핑 영역 설정
+            ctx.save();
+            ctx.beginPath();
+            ctx.ellipse(centerX, centerY, radiusX, radiusY, 0, 0, Math.PI * 2);
+            ctx.clip();
+
+            // 우주 배경 (중심에서 바깥으로 그라디언트)
+            const universeGradient = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, radiusX);
+            universeGradient.addColorStop(0, '#1a1a3e');      // 중심: 깊은 남색
+            universeGradient.addColorStop(0.3, '#0f0f2e');    // 어두운 남색
+            universeGradient.addColorStop(0.6, '#0a0a1e');    // 거의 검은색
+            universeGradient.addColorStop(1, '#000000');      // 가장자리: 완전 검은색
+            ctx.fillStyle = universeGradient;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // 은하수 효과 (중심부에 밝은 띠)
+            const milkyWayGradient = ctx.createLinearGradient(0, centerY - 50, canvas.width, centerY + 50);
+            milkyWayGradient.addColorStop(0, 'rgba(100, 100, 150, 0)');
+            milkyWayGradient.addColorStop(0.3, 'rgba(150, 150, 200, 0.15)');
+            milkyWayGradient.addColorStop(0.5, 'rgba(180, 180, 220, 0.25)');
+            milkyWayGradient.addColorStop(0.7, 'rgba(150, 150, 200, 0.15)');
+            milkyWayGradient.addColorStop(1, 'rgba(100, 100, 150, 0)');
+            ctx.fillStyle = milkyWayGradient;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // 별들 (매우 미세하게만 반짝임)
+            for (let i = 0; i < 300; i++) {
+                const angle = (i / 300) * Math.PI * 2;
+                const distance = (i % 100) / 100; // 고정된 거리
+                const x = centerX + Math.cos(angle) * radiusX * distance * 0.95;
+                const y = centerY + Math.sin(angle) * radiusY * distance * 0.95;
+                const size = (i % 3) * 0.5 + 0.3; // 고정된 크기
+                const baseOpacity = ((i % 10) / 10) * 0.6 + 0.2;
+                const twinkle = Math.sin(elapsedTime * 0.5 + i * 0.1) * 0.1; // 매우 미세한 반짝임
+
+                ctx.fillStyle = `rgba(255, 255, 255, ${baseOpacity + twinkle})`;
+                ctx.beginPath();
+                ctx.arc(x, y, size, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            // 은하단 (Galaxy Clusters)
+            const galaxyClusters = [
+                { angle: 0.2, dist: 0.4, count: 8, color: 'rgba(150, 180, 255, 0.3)' },
+                { angle: 1.5, dist: 0.55, count: 10, color: 'rgba(255, 200, 150, 0.25)' },
+                { angle: 3.0, dist: 0.35, count: 6, color: 'rgba(200, 150, 255, 0.3)' },
+                { angle: 4.5, dist: 0.65, count: 12, color: 'rgba(180, 220, 255, 0.28)' },
+            ];
+
+            galaxyClusters.forEach(cluster => {
+                const clusterX = centerX + Math.cos(cluster.angle) * radiusX * cluster.dist;
+                const clusterY = centerY + Math.sin(cluster.angle) * radiusY * cluster.dist;
+
+                // 은하단 배경 빛
+                const clusterGlow = ctx.createRadialGradient(clusterX, clusterY, 0, clusterX, clusterY, 40);
+                clusterGlow.addColorStop(0, cluster.color);
+                clusterGlow.addColorStop(1, 'rgba(0, 0, 0, 0)');
+                ctx.fillStyle = clusterGlow;
+                ctx.beginPath();
+                ctx.arc(clusterX, clusterY, 40, 0, Math.PI * 2);
+                ctx.fill();
+
+                // 은하단 내 개별 은하들
+                for (let g = 0; g < cluster.count; g++) {
+                    const gAngle = (g / cluster.count) * Math.PI * 2;
+                    const gDist = 10 + (g % 3) * 8;
+                    const gx = clusterX + Math.cos(gAngle) * gDist;
+                    const gy = clusterY + Math.sin(gAngle) * gDist;
+                    const gSize = 3 + (g % 2) * 2;
+
+                    const galaxyGradient = ctx.createRadialGradient(gx, gy, 0, gx, gy, gSize);
+                    galaxyGradient.addColorStop(0, 'rgba(255, 240, 200, 0.6)');
+                    galaxyGradient.addColorStop(0.5, 'rgba(200, 180, 255, 0.3)');
+                    galaxyGradient.addColorStop(1, 'rgba(100, 100, 200, 0)');
+                    ctx.fillStyle = galaxyGradient;
+                    ctx.beginPath();
+                    ctx.arc(gx, gy, gSize, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            });
+
+            // 나선 은하들 (작은 크기)
+            const spiralGalaxies = [
+                { x: centerX - radiusX * 0.3, y: centerY - radiusY * 0.2, size: 5 },
+                { x: centerX + radiusX * 0.4, y: centerY + radiusY * 0.3, size: 4 },
+                { x: centerX + radiusX * 0.2, y: centerY - radiusY * 0.5, size: 5.5 },
+                { x: centerX - radiusX * 0.5, y: centerY + radiusY * 0.4, size: 4.5 },
+                { x: centerX + radiusX * 0.1, y: centerY + radiusY * 0.15, size: 4 },
+                { x: centerX - radiusX * 0.15, y: centerY - radiusY * 0.35, size: 4.5 },
+            ];
+
+            spiralGalaxies.forEach(galaxy => {
+                const galaxyGradient = ctx.createRadialGradient(galaxy.x, galaxy.y, 0, galaxy.x, galaxy.y, galaxy.size);
+                galaxyGradient.addColorStop(0, 'rgba(255, 220, 150, 0.6)');
+                galaxyGradient.addColorStop(0.4, 'rgba(200, 180, 255, 0.3)');
+                galaxyGradient.addColorStop(0.8, 'rgba(100, 120, 200, 0.1)');
+                galaxyGradient.addColorStop(1, 'rgba(50, 50, 100, 0)');
+                ctx.fillStyle = galaxyGradient;
+                ctx.beginPath();
+                ctx.arc(galaxy.x, galaxy.y, galaxy.size, 0, Math.PI * 2);
+                ctx.fill();
+            });
+
+            // 클리핑 해제
+            ctx.restore();
+
+            // 타원 테두리 (우주의 경계)
+            ctx.strokeStyle = 'rgba(100, 100, 150, 0.5)';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.ellipse(centerX, centerY, radiusX, radiusY, 0, 0, Math.PI * 2);
+            ctx.stroke();
+
+            // 외곽 빛나는 효과
+            ctx.shadowBlur = 20;
+            ctx.shadowColor = 'rgba(150, 150, 200, 0.3)';
+            ctx.strokeStyle = 'rgba(180, 180, 220, 0.2)';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.ellipse(centerX, centerY, radiusX + 5, radiusY + 5, 0, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.shadowBlur = 0;
+        }
+
+        // 로컬 스토리지 로드
+        function loadGameData() {
+            const data = localStorage.getItem(STORAGE_KEY);
+            if (data) {
+                const parsed = JSON.parse(data);
+                bestScore = parsed.bestScore || 0;
+                unlockedAchievements = parsed.achievements || [];
+
+                // 업적 복원
+                achievements.forEach(ach => {
+                    if (unlockedAchievements.includes(ach.id)) {
+                        ach.unlocked = true;
+                    }
+                });
+            }
+            updateBestScoreDisplay();
+        }
+
+        // 로컬 스토리지 저장
+        function saveGameData() {
+            const data = {
+                bestScore: bestScore,
+                achievements: unlockedAchievements
+            };
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+        }
+
+        // 최고 기록 표시 업데이트
+        function updateBestScoreDisplay() {
+            document.getElementById('bestScore').textContent = `최고 기록: ${bestScore.toFixed(3)}초`;
+        }
+
+        // 파티클 클래스
+        class Particle {
+            constructor(x, y, color, velocityX, velocityY) {
+                this.x = x;
+                this.y = y;
+                this.color = color;
+                this.velocityX = velocityX;
+                this.velocityY = velocityY;
+                this.alpha = 1;
+                this.radius = Math.random() * 3 + 2;
+            }
+
+            update() {
+                this.x += this.velocityX;
+                this.y += this.velocityY;
+                this.velocityY += 0.2; // 중력
+                this.alpha -= 0.02;
+            }
+
+            draw() {
+                ctx.save();
+                ctx.globalAlpha = this.alpha;
+                ctx.fillStyle = this.color;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            }
+
+            isDead() {
+                return this.alpha <= 0;
+            }
+        }
+
+        // 파티클 생성
+        function createParticles(x, y, color, count = 10) {
+            for (let i = 0; i < count; i++) {
+                const angle = (Math.PI * 2 * i) / count;
+                const speed = Math.random() * 3 + 2;
+                const velocityX = Math.cos(angle) * speed;
+                const velocityY = Math.sin(angle) * speed - 2;
+                particles.push(new Particle(x, y, color, velocityX, velocityY));
+            }
+        }
+
+        // 파티클 업데이트 및 그리기
+        function updateAndDrawParticles() {
+            particles = particles.filter(p => !p.isDead());
+            particles.forEach(p => {
+                p.update();
+                p.draw();
+            });
+        }
+
+        // 업적 확인
+        function checkAchievements(time) {
+            achievements.forEach(ach => {
+                if (!ach.unlocked && time >= ach.time) {
+                    ach.unlocked = true;
+                    unlockedAchievements.push(ach.id);
+                    showAchievementNotification(ach);
+                    saveGameData();
+                }
+            });
+        }
+
+        // 업적 알림 표시
+        function showAchievementNotification(achievement) {
+            const notif = document.getElementById('achievementNotification');
+            notif.textContent = `🏆 ${achievement.name} 달성!`;
+            notif.style.display = 'block';
+
+            setTimeout(() => {
+                notif.style.display = 'none';
+            }, 3000);
+        }
+
+        // 진동 피드백 (모바일)
+        function vibrate(duration = 50) {
+            if (navigator.vibrate) {
+                navigator.vibrate(duration);
+            }
+        }
+
+        // 캐릭터 이미지 로드
+        const characterImg = new Image();
+        characterImg.src = 'character.png';
+        let imageLoaded = false;
+        characterImg.onload = function() {
+            imageLoaded = true;
+            // 로딩 완료 후 로딩 화면 숨기기
+            setTimeout(() => {
+                document.getElementById('loadingScreen').style.display = 'none';
+                // 첫 실행 시 튜토리얼 표시
+                if (!localStorage.getItem(STORAGE_KEY)) {
+                    document.getElementById('tutorialScreen').style.display = 'flex';
+                }
+            }, 1000);
+        };
+
+        // 공 설정
+        const ball = {
+            x: 100,             // 120 → 100 (더 왼쪽으로 이동)
+            y: 100,
+            radius: 15,
+            velocityY: 0,
+            gravity: 0.35,      // 0.25 → 0.35 (중력 증가)
+            jumpPower: -6.5,    // -7 → -6.5 (점프력 감소)
+            canJump: true
+        };
+
+        // 장애물 배열
+        let obstacles = [];
+        let obstacleSpeed = 2;          // PC 기준 속도
+        let obstacleSpawnRate = 140;    // PC 기준 생성 간격
+        let frameCount = 0;
+
+        // 난이도 설정
+        let difficultyLevel = 1;
+        const maxDifficulty = 25;
+
+        // 장애물 생성
+        function createObstacle() {
+            const elapsedTime = gameStarted ? (Date.now() - startTime - totalPauseTime) / 1000 : 0;
+
+            // 시간에 따라 간격이 점점 좁아짐
+            const maxGap = 250;
+            const minGap = 70;
+            const gapReduction = Math.min(elapsedTime * 0.72, maxGap - minGap);
+            const gap = Math.max(minGap, maxGap - gapReduction);
+
+            const gapPosition = Math.random() * (canvas.height - gap - 100) + 50;
+
+            obstacles.push({
+                x: canvas.width,
+                topHeight: gapPosition,
+                bottomY: gapPosition + gap,
+                width: 50,
+                passed: false
+            });
+        }
+
+        // 난이도 업데이트
+        function updateDifficulty() {
+            const elapsedTime = gameStarted ? (Date.now() - startTime - totalPauseTime) / 1000 : 0;
+
+            // 시간에 따라 속도가 점점 빨라짐
+            const speedMultiplier = Math.min(1 + (elapsedTime * 0.044), 12);
+            obstacleSpeed = 2 * speedMultiplier * speedMultiplierDevice; // 디바이스별 속도 배율 적용
+
+            // 장애물 생성 간격도 점점 짧아짐
+            const spawnReduction = Math.min(elapsedTime * 0.5, 125);
+            obstacleSpawnRate = Math.max(15, 140 - spawnReduction);
+
+            // 난이도 레벨 표시 (10초마다 1단계씩 증가)
+            const newLevel = Math.min(Math.floor(elapsedTime / 10) + 1, maxDifficulty);
+            if (newLevel !== difficultyLevel) {
+                difficultyLevel = newLevel;
+                document.getElementById('difficulty').textContent = `난이도: ${difficultyLevel}단계`;
+            }
+        }
+
+        // 캐릭터 이미지 그리기
+        function drawBall() {
+            const centerX = ball.x;
+            const centerY = ball.y;
+            const size = ball.radius * 2; // 이미지 크기 (직경)
+
+            // 이미지가 로드되었으면 이미지 그리기, 아니면 기본 원 그리기
+            if (imageLoaded) {
+                ctx.save();
+
+                // 이미지를 중심점 기준으로 그리기
+                ctx.drawImage(
+                    characterImg,
+                    centerX - size,
+                    centerY - size,
+                    size * 2,
+                    size * 2
+                );
+
+                ctx.restore();
+            } else {
+                // 이미지 로딩 중일 때는 기본 원 표시
+                ctx.beginPath();
+                ctx.arc(centerX, centerY, ball.radius, 0, Math.PI * 2);
+                ctx.fillStyle = '#FFD54F';
+                ctx.fill();
+                ctx.strokeStyle = '#5D4037';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+            }
+        }
+
+        // 장애물 그리기
+        function drawObstacles() {
+            obstacles.forEach(obstacle => {
+                // 위쪽 장애물
+                const gradient1 = ctx.createLinearGradient(obstacle.x, 0, obstacle.x + obstacle.width, 0);
+                gradient1.addColorStop(0, '#2E7D32');
+                gradient1.addColorStop(1, '#4CAF50');
+
+                ctx.fillStyle = gradient1;
+                ctx.fillRect(obstacle.x, 0, obstacle.width, obstacle.topHeight);
+                ctx.strokeStyle = '#1B5E20';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(obstacle.x, 0, obstacle.width, obstacle.topHeight);
+
+                // 아래쪽 장애물
+                const gradient2 = ctx.createLinearGradient(obstacle.x, obstacle.bottomY, obstacle.x + obstacle.width, canvas.height);
+                gradient2.addColorStop(0, '#2E7D32');
+                gradient2.addColorStop(1, '#4CAF50');
+
+                ctx.fillStyle = gradient2;
+                ctx.fillRect(obstacle.x, obstacle.bottomY, obstacle.width, canvas.height - obstacle.bottomY);
+                ctx.strokeStyle = '#1B5E20';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(obstacle.x, obstacle.bottomY, obstacle.width, canvas.height - obstacle.bottomY);
+            });
+        }
+
+        // 충돌 감지
+        function checkCollision() {
+            // 바닥과 천장 충돌
+            if (ball.y + ball.radius > canvas.height || ball.y - ball.radius < 0) {
+                endGame();
+                return;
+            }
+
+            // 장애물 충돌
+            obstacles.forEach(obstacle => {
+                if (ball.x + ball.radius > obstacle.x &&
+                    ball.x - ball.radius < obstacle.x + obstacle.width) {
+
+                    if (ball.y - ball.radius < obstacle.topHeight ||
+                        ball.y + ball.radius > obstacle.bottomY) {
+                        endGame();
+                    }
+                }
+            });
+        }
+
+        // 공 업데이트
+        function updateBall() {
+            if (gameStarted && firstJumpMade) {
+                // 첫 점프 이후에만 중력 적용
+                ball.velocityY += ball.gravity;
+                ball.y += ball.velocityY;
+            }
+        }
+
+        // 장애물 업데이트
+        function updateObstacles() {
+            if (!gameStarted) return;
+
+            obstacles.forEach((obstacle, index) => {
+                obstacle.x -= obstacleSpeed;
+
+                // 화면 밖으로 나간 장애물 제거
+                if (obstacle.x + obstacle.width < 0) {
+                    obstacles.splice(index, 1);
+                }
+            });
+
+            // 새 장애물 생성
+            frameCount++;
+            if (frameCount > obstacleSpawnRate) {
+                createObstacle();
+                frameCount = 0;
+            }
+        }
+
+        // 게임 시작
+        function startGame() {
+            if (!gameStarted && !isGameOver) {
+                gameStarted = true;
+                startTime = Date.now();
+
+                // 모바일 오디오 활성화 후 배경음악 시작
+                if (audioContext.state === 'suspended') {
+                    audioContext.resume().then(() => {
+                        createBackgroundMusic();
+                    });
+                } else {
+                    createBackgroundMusic();
+                }
+            }
+        }
+
+        // 점프
+        function jump() {
+            if (!gameStarted) {
+                startGame();
+                // 게임 시작과 동시에 첫 점프
+                ball.velocityY = ball.jumpPower;
+                ball.canJump = false;
+                firstJumpMade = true;
+                playJumpSound();
+                createParticles(ball.x, ball.y, '#FFD54F', 8);
+                vibrate(30);
+                return;
+            }
+            if (isPaused) return; // 일시정지 중에는 점프 불가
+            if (ball.canJump && !isGameOver && gameStarted) {
+                ball.velocityY = ball.jumpPower;
+                ball.canJump = false;
+                playJumpSound(); // 점프 효과음
+                createParticles(ball.x, ball.y, '#FFD54F', 8); // 점프 파티클
+                vibrate(30); // 진동 피드백
+            }
+        }
+
+        // 게임 종료
+        function endGame() {
+            if (isGameOver) return;
+
+            isGameOver = true;
+            isMusicPlaying = false; // 배경음악 중지
+            playDeathSound(); // 죽음 효과음
+
+            const finalTime = parseFloat(((Date.now() - startTime - totalPauseTime) / 1000).toFixed(3));
+            document.getElementById('finalTime').textContent = `기록: ${finalTime.toFixed(3)}초`;
+
+            // 충돌 파티클
+            createParticles(ball.x, ball.y, '#FF6B6B', 20);
+            vibrate(200); // 강한 진동
+
+            // 신기록 확인
+            const newRecord = document.getElementById('newRecord');
+            if (finalTime > bestScore) {
+                bestScore = finalTime;
+                saveGameData();
+                updateBestScoreDisplay();
+                newRecord.style.display = 'block';
+            } else {
+                newRecord.style.display = 'none';
+            }
+
+            // 업적 요약
+            const unlockedCount = achievements.filter(a => a.unlocked).length;
+            document.getElementById('achievementSummary').textContent =
+                `업적: ${unlockedCount}/${achievements.length} 달성`;
+
+            document.getElementById('gameOver').style.display = 'block';
+        }
+
+        // 게임 리셋
+        function resetGame() {
+            ball.x = 100;  // 왼쪽 위치로 초기화
+            ball.y = 100;
+            ball.velocityY = 0;
+            ball.canJump = true;
+
+            gameTime = 0;
+            isGameOver = false;
+            gameStarted = false;
+            isPaused = false;
+            firstJumpMade = false; // 첫 점프 플래그 초기화
+            obstacles = [];
+            particles = [];
+            frameCount = 0;
+            difficultyLevel = 1;
+            obstacleSpeed = 2;
+            obstacleSpawnRate = 140;
+            totalPauseTime = 0;
+            stars = []; // 별 초기화
+            spaceStars = []; // 우주 별 초기화
+
+            startTime = Date.now();
+
+            document.getElementById('difficulty').textContent = '난이도: 1단계';
+            document.getElementById('gameOver').style.display = 'none';
+            document.getElementById('pauseScreen').style.display = 'none';
+
+            gameLoop();
+        }
+
+
+        // 게임 루프
+        function gameLoop() {
+            if (isGameOver) return;
+            if (isPaused) {
+                requestAnimationFrame(gameLoop);
+                return;
+            }
+
+            // 캔버스 클리어
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // 난이도별 배경 색상 변화
+            const elapsedTime = gameStarted ? (Date.now() - startTime - totalPauseTime) / 1000 : 0;
+            let bgColor1, bgColor2;
+
+            if (difficultyLevel >= 25) {
+                // 25단계: 관측 가능한 우주 (타원형)
+                // 흰색 배경
+                ctx.fillStyle = '#FFFFFF';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                // 관측 가능한 우주 (타원형)
+                drawObservableUniverse();
+            } else if (difficultyLevel >= 20) {
+                // 20~24단계: 우주 공간
+                // 깊은 검은 우주 배경
+                ctx.fillStyle = '#000000';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                // 먼 별들 (더 많이)
+                drawSpaceStars();
+
+                // 행성들 그리기
+                drawPlanets();
+
+                // 달 그리기
+                drawMoon();
+            } else if (difficultyLevel >= 15) {
+                // 15~19단계: 완전 밤 + 별
+                bgColor1 = '#0a0e27';
+                bgColor2 = '#1a1a3e';
+
+                const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+                gradient.addColorStop(0, bgColor1);
+                gradient.addColorStop(1, bgColor2);
+                ctx.fillStyle = gradient;
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                // 별 그리기
+                drawStars();
+            } else if (difficultyLevel >= 10) {
+                // 10~14단계: 밤이 찾아오는 하늘 (상단은 남색~보라, 하단은 노을)
+                const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+                gradient.addColorStop(0, '#1a1a3e');      // 상단: 깊은 남색
+                gradient.addColorStop(0.3, '#2d1b4e');    // 보라빛
+                gradient.addColorStop(0.5, '#4a2c5e');    // 연한 보라
+                gradient.addColorStop(0.7, '#7d4e7f');    // 보라-핑크
+                gradient.addColorStop(0.85, '#ff6b9d');   // 분홍빛 노을
+                gradient.addColorStop(1, '#ffa07a');      // 하단: 주황 노을
+                ctx.fillStyle = gradient;
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                // 노을 구름 (하단부)
+                drawSunsetClouds();
+            } else if (difficultyLevel >= 5) {
+                // 5~9단계: 노을 (더 화려한 그라디언트)
+                const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+                gradient.addColorStop(0, '#ff6b6b');      // 상단: 빨강
+                gradient.addColorStop(0.25, '#ff8e53');   // 주황
+                gradient.addColorStop(0.5, '#ffa07a');    // 연한 주황
+                gradient.addColorStop(0.7, '#ffb88c');    // 살구색
+                gradient.addColorStop(0.85, '#ffd4a3');   // 크림색
+                gradient.addColorStop(1, '#ffe5b4');      // 하단: 밝은 크림
+                ctx.fillStyle = gradient;
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                // 노을 구름
+                drawSunsetClouds();
+            } else {
+                // 1~4단계: 밝은 하늘
+                const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+                gradient.addColorStop(0, '#87CEEB');      // 상단: 하늘색
+                gradient.addColorStop(0.5, '#b0d9f7');    // 중간
+                gradient.addColorStop(1, '#E0F6FF');      // 하단: 밝은 하늘
+                ctx.fillStyle = gradient;
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                // 구름 효과 (밝은 하늘일 때만)
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+                // 첫 번째 구름
+                ctx.beginPath();
+                ctx.arc(100, 100, 40, 0, Math.PI * 2);
+                ctx.arc(130, 95, 50, 0, Math.PI * 2);
+                ctx.arc(160, 100, 40, 0, Math.PI * 2);
+                ctx.fill();
+
+                // 두 번째 구름
+                ctx.beginPath();
+                ctx.arc(280, 180, 35, 0, Math.PI * 2);
+                ctx.arc(310, 175, 45, 0, Math.PI * 2);
+                ctx.arc(340, 180, 35, 0, Math.PI * 2);
+                ctx.fill();
+
+                // 세 번째 작은 구름
+                ctx.beginPath();
+                ctx.arc(50, 250, 25, 0, Math.PI * 2);
+                ctx.arc(70, 245, 30, 0, Math.PI * 2);
+                ctx.arc(90, 250, 25, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            // 게임 시작 전 안내 메시지
+            if (!gameStarted) {
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+                ctx.fillRect(50, 250, 300, 100);
+                ctx.fillStyle = '#FFFFFF';
+                ctx.font = 'bold 24px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText('터치하여', 200, 285);
+                ctx.fillText('게임을 시작하세요!', 200, 320);
+                ctx.textAlign = 'left';
+            }
+
+            // 게임 시간 업데이트
+            if (gameStarted) {
+                const elapsedTime = (Date.now() - startTime - totalPauseTime) / 1000;
+                const displayTime = elapsedTime.toFixed(3);
+                const currentTime = Math.floor(elapsedTime);
+
+                // 매 프레임마다 난이도 업데이트 (속도와 간격이 실시간으로 변함)
+                updateDifficulty();
+
+                // 업적 확인
+                checkAchievements(elapsedTime);
+
+                if (currentTime !== gameTime) {
+                    gameTime = currentTime;
+                }
+
+                // 우측 상단에 시간 표시
+                const timeStr = elapsedTime.toFixed(3);
+
+                // 반응형 크기 설정
+                const boxWidth = isMobile ? 120 : 145;
+                const boxHeight = isMobile ? 45 : 55;
+                const titleFontSize = isMobile ? 12 : 14;
+                const timeFontSize = isMobile ? 18 : 22;
+                const boxX = canvas.width - boxWidth - 10;
+                const boxY = 15;
+
+                // 배경 박스
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.75)';
+                ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
+                ctx.shadowBlur = 10;
+                ctx.shadowOffsetX = 0;
+                ctx.shadowOffsetY = 4;
+                ctx.fillRect(boxX, boxY, boxWidth, boxHeight);
+                ctx.shadowBlur = 0;
+                ctx.shadowOffsetX = 0;
+                ctx.shadowOffsetY = 0;
+
+                // 테두리
+                ctx.strokeStyle = '#FFD700';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(boxX, boxY, boxWidth, boxHeight);
+
+                // 타이틀
+                ctx.fillStyle = '#FFD700';
+                ctx.font = `bold ${titleFontSize}px Arial`;
+                ctx.textAlign = 'center';
+                ctx.fillText('TIME', boxX + boxWidth / 2, boxY + titleFontSize + 8);
+
+                // 시간 표시
+                ctx.fillStyle = '#FFFFFF';
+                ctx.font = `bold ${timeFontSize}px Consolas, monospace`;
+                ctx.textAlign = 'center';
+                ctx.fillText(timeStr + 's', boxX + boxWidth / 2, boxY + boxHeight - 8);
+
+                ctx.textAlign = 'left';
+            }
+
+            // 업데이트
+            updateBall();
+            updateObstacles();
+
+            // 그리기
+            drawObstacles();
+            drawBall();
+            updateAndDrawParticles(); // 파티클 그리기
+
+            // 충돌 감지
+            checkCollision();
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        // 이벤트 리스너 - 터치 및 클릭
+        function handleJump() {
+            jump();
+            setTimeout(() => {
+                ball.canJump = true;
+            }, 100);
+        }
+
+        // 터치 이벤트 (모바일)
+        canvas.addEventListener('touchstart', (e) => {
+            e.preventDefault(); // 기본 터치 동작 방지
+            handleJump();
+        });
+
+        // 클릭 이벤트 (PC)
+        canvas.addEventListener('click', () => {
+            handleJump();
+        });
+
+        // 키보드 이벤트 (PC - 스페이스바)
+        document.addEventListener('keydown', (e) => {
+            if (e.code === 'Space' || e.key === ' ') {
+                e.preventDefault(); // 스페이스바 스크롤 방지
+                handleJump();
+            }
+        });
+
+        document.getElementById('restartBtn').addEventListener('click', resetGame);
+
+
+        // UI 버튼 이벤트
+        // 일시정지
+        document.getElementById('pauseBtn').addEventListener('click', () => {
+            if (isGameOver || !gameStarted) return;
+
+            isPaused = !isPaused;
+            document.getElementById('pauseBtn').textContent = isPaused ? '▶️' : '⏸️';
+            document.getElementById('pauseScreen').style.display = isPaused ? 'flex' : 'none';
+
+            if (isPaused) {
+                pauseStartTime = Date.now();
+                isMusicPlaying = false;
+            } else {
+                // 일시정지 해제
+                totalPauseTime += Date.now() - pauseStartTime;
+                if (audioContext.state === 'suspended') {
+                    audioContext.resume().then(() => {
+                        createBackgroundMusic();
+                    });
+                } else {
+                    createBackgroundMusic();
+                }
+            }
+        });
+
+        // 일시정지 화면 클릭 시 재개
+        document.getElementById('pauseScreen').addEventListener('click', () => {
+            if (isPaused && !isGameOver && gameStarted) {
+                isPaused = false;
+                document.getElementById('pauseBtn').textContent = '⏸️';
+                document.getElementById('pauseScreen').style.display = 'none';
+
+                totalPauseTime += Date.now() - pauseStartTime;
+                if (audioContext.state === 'suspended') {
+                    audioContext.resume().then(() => {
+                        createBackgroundMusic();
+                    });
+                } else {
+                    createBackgroundMusic();
+                }
+            }
+        });
+
+        // 튜토리얼 닫기
+        document.getElementById('tutorialCloseBtn').addEventListener('click', () => {
+            document.getElementById('tutorialScreen').style.display = 'none';
+        });
+
+        // PC 전체화면 토글 (모바일에서는 작동하지 않음)
+        if (!isMobile) {
+            document.getElementById('fullscreenToggleBtn').addEventListener('click', () => {
+                document.body.classList.toggle('fullscreen-mode');
+                const isFullscreen = document.body.classList.contains('fullscreen-mode');
+                document.getElementById('fullscreenToggleBtn').textContent = isFullscreen ? '⊡' : '⛶';
+                resizeCanvas();
+            });
+        }
+
+        // 화면 리사이즈 및 방향 전환 처리
+        function resizeCanvas() {
+            const container = document.getElementById('gameContainer');
+            const maxWidth = window.innerWidth - 40;
+            const maxHeight = window.innerHeight - 200;
+
+            let newWidth = 400;
+            let newHeight = 600;
+
+            // 세로 모드 (모바일)
+            if (window.innerWidth < window.innerHeight) {
+                newWidth = Math.min(maxWidth, 400);
+                newHeight = newWidth * 1.5;
+            }
+            // 가로 모드 (모바일 또는 태블릿)
+            else if (window.innerWidth < 800) {
+                newHeight = Math.min(maxHeight, 400);
+                newWidth = newHeight * 0.667;
+            }
+
+            // 캔버스 크기는 유지하고 CSS로 스케일링
+            const scaleX = newWidth / 400;
+            const scaleY = newHeight / 600;
+            const scale = Math.min(scaleX, scaleY);
+
+            canvas.style.width = (400 * scale) + 'px';
+            canvas.style.height = (600 * scale) + 'px';
+        }
+
+        window.addEventListener('resize', resizeCanvas);
+        window.addEventListener('orientationchange', () => {
+            setTimeout(resizeCanvas, 100);
+        });
+
+        // 첫 터치/클릭 시 자동 전체화면
+        // 모바일 오디오 활성화
+        function initAudio() {
+            if (audioContext.state === 'suspended') {
+                audioContext.resume().then(() => {
+                    console.log('Audio context resumed');
+                });
+            }
+        }
+
+        // 첫 터치/클릭 시 오디오 활성화
+        function handleFirstInteraction() {
+            initAudio();
+        }
+
+        canvas.addEventListener('touchstart', handleFirstInteraction);
+        canvas.addEventListener('click', handleFirstInteraction);
+
+        // 초기 설정
+        loadGameData();
+        resizeCanvas();
+
+        // 초기 렌더링
+        gameLoop();
+    </script>
+</body>
+</html>

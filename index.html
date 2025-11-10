@@ -1,0 +1,1276 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>공 점프 게임</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: 'Arial', sans-serif;
+        }
+
+        #gameContainer {
+            text-align: center;
+        }
+
+        canvas {
+            border: 4px solid #fff;
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            background: linear-gradient(180deg, #87CEEB 0%, #E0F6FF 100%);
+        }
+
+        #gameInfo {
+            color: white;
+            margin-top: 20px;
+            font-size: 20px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+
+        .controls {
+            color: white;
+            margin-top: 15px;
+            font-size: 16px;
+        }
+
+        canvas {
+            cursor: pointer;
+            touch-action: none; /* 터치 스크롤 방지 */
+        }
+
+        #gameOver {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0,0,0,0.8);
+            color: white;
+            padding: 40px;
+            border-radius: 15px;
+            display: none;
+            text-align: center;
+        }
+
+        #gameOver h2 {
+            font-size: 36px;
+            margin-bottom: 20px;
+        }
+
+        #gameOver p {
+            font-size: 24px;
+            margin: 10px 0;
+        }
+
+        #restartBtn {
+            margin-top: 20px;
+            padding: 15px 40px;
+            font-size: 20px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        #restartBtn:hover {
+            background: #764ba2;
+        }
+
+        /* UI 버튼들 */
+        .ui-buttons {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            display: flex;
+            gap: 10px;
+            z-index: 999;
+        }
+
+        .ui-btn {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            border: none;
+            background: rgba(255, 255, 255, 0.9);
+            cursor: pointer;
+            font-size: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+            transition: transform 0.2s;
+        }
+
+        .ui-btn:active {
+            transform: scale(0.95);
+        }
+
+        /* 로딩 화면 */
+        #loadingScreen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+        }
+
+        #loadingScreen h1 {
+            color: white;
+            font-size: 48px;
+            margin-bottom: 30px;
+        }
+
+        .loading-spinner {
+            width: 60px;
+            height: 60px;
+            border: 6px solid rgba(255,255,255,0.3);
+            border-top: 6px solid white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* 일시정지 화면 */
+        #pauseScreen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.7);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        #pauseScreen h2 {
+            color: white;
+            font-size: 48px;
+        }
+
+        /* 튜토리얼 화면 */
+        #tutorialScreen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.9);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1001;
+        }
+
+        .tutorial-content {
+            background: white;
+            padding: 40px;
+            border-radius: 20px;
+            max-width: 500px;
+            text-align: center;
+        }
+
+        .tutorial-content h2 {
+            color: #667eea;
+            margin-bottom: 20px;
+        }
+
+        .tutorial-content p {
+            font-size: 18px;
+            margin: 15px 0;
+            line-height: 1.6;
+        }
+
+        .tutorial-content button {
+            margin-top: 20px;
+            padding: 15px 40px;
+            font-size: 20px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+
+        /* 최고 기록 표시 */
+        #bestScore {
+            color: #FFD700;
+            font-size: 18px;
+            margin-top: 10px;
+        }
+
+        /* 업적 알림 */
+        #achievementNotification {
+            position: fixed;
+            top: 100px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: linear-gradient(135deg, #FFD700, #FFA500);
+            color: white;
+            padding: 20px 40px;
+            border-radius: 15px;
+            font-size: 24px;
+            font-weight: bold;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.4);
+            display: none;
+            z-index: 2000;
+            animation: slideDown 0.5s ease-out;
+        }
+
+        @keyframes slideDown {
+            from {
+                top: -100px;
+                opacity: 0;
+            }
+            to {
+                top: 100px;
+                opacity: 1;
+            }
+        }
+
+        /* 반응형 디자인 */
+        @media (max-width: 600px) {
+            canvas {
+                max-width: 100vw;
+                max-height: 70vh;
+            }
+        }
+
+        /* ===== 개발자 콘솔 (출시 전 삭제) ===== */
+        #devConsole {
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            background: rgba(0, 0, 0, 0.85);
+            color: #00ff00;
+            font-family: 'Consolas', monospace;
+            font-size: 12px;
+            padding: 15px;
+            border-radius: 8px;
+            border: 2px solid #00ff00;
+            min-width: 250px;
+            box-shadow: 0 4px 20px rgba(0, 255, 0, 0.3);
+            z-index: 1000;
+        }
+
+        #devConsole h3 {
+            margin: 0 0 10px 0;
+            color: #00ff00;
+            font-size: 14px;
+            border-bottom: 1px solid #00ff00;
+            padding-bottom: 5px;
+        }
+
+        #devConsole .stat {
+            margin: 5px 0;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        #devConsole .stat-label {
+            color: #00ff00;
+        }
+
+        #devConsole .stat-value {
+            color: #ffffff;
+            font-weight: bold;
+        }
+
+        #devConsole .warning {
+            color: #ffaa00;
+            margin-top: 10px;
+            font-size: 11px;
+            border-top: 1px solid #00ff00;
+            padding-top: 5px;
+        }
+        /* ===== 개발자 콘솔 끝 ===== */
+    </style>
+</head>
+<body>
+    <!-- 로딩 화면 -->
+    <div id="loadingScreen">
+        <h1>🌻 점프 게임</h1>
+        <div class="loading-spinner"></div>
+        <p style="color: white; margin-top: 20px;">로딩 중...</p>
+    </div>
+
+    <!-- 튜토리얼 화면 -->
+    <div id="tutorialScreen">
+        <div class="tutorial-content">
+            <h2>게임 방법</h2>
+            <p>📱 <strong>화면을 터치</strong>하여 점프하세요!</p>
+            <p>⏱️ 장애물을 피하며 최대한 오래 생존하세요</p>
+            <p>📈 시간이 지날수록 난이도가 올라갑니다</p>
+            <p>🏆 최고 기록에 도전하세요!</p>
+            <button id="tutorialCloseBtn">시작하기!</button>
+        </div>
+    </div>
+
+    <!-- 일시정지 화면 -->
+    <div id="pauseScreen">
+        <h2>⏸️ 일시정지</h2>
+    </div>
+
+    <!-- 업적 알림 -->
+    <div id="achievementNotification"></div>
+
+    <!-- UI 버튼들 -->
+    <div class="ui-buttons">
+        <button class="ui-btn" id="soundBtn" title="사운드">🔊</button>
+        <button class="ui-btn" id="pauseBtn" title="일시정지">⏸️</button>
+        <button class="ui-btn" id="fullscreenBtn" title="전체화면">⛶</button>
+    </div>
+
+    <!-- ===== 개발자 콘솔 (출시 전 삭제) ===== -->
+    <div id="devConsole">
+        <h3>🛠️ DEV CONSOLE</h3>
+        <div class="stat">
+            <span class="stat-label">경과 시간:</span>
+            <span class="stat-value" id="devTime">0.000s</span>
+        </div>
+        <div class="stat">
+            <span class="stat-label">현재 속도:</span>
+            <span class="stat-value" id="devSpeed">0.00</span>
+        </div>
+        <div class="stat">
+            <span class="stat-label">속도 배율:</span>
+            <span class="stat-value" id="devSpeedMult">1.00x</span>
+        </div>
+        <div class="stat">
+            <span class="stat-label">장애물 간격:</span>
+            <span class="stat-value" id="devGap">280px</span>
+        </div>
+        <div class="stat">
+            <span class="stat-label">생성 주기:</span>
+            <span class="stat-value" id="devSpawn">120f</span>
+        </div>
+        <div class="stat">
+            <span class="stat-label">장애물 수:</span>
+            <span class="stat-value" id="devObstacles">0</span>
+        </div>
+        <div class="stat">
+            <span class="stat-label">FPS:</span>
+            <span class="stat-value" id="devFPS">60</span>
+        </div>
+        <div class="stat">
+            <span class="stat-label">무적 모드:</span>
+            <span class="stat-value" id="devGodMode" style="color: #ff0000;">OFF</span>
+        </div>
+        <div class="warning">
+            ⚠️ 출시 전 삭제 필요<br>
+            [G] 무적 모드 ON/OFF<br>
+            [T] 시간 +20초 건너뛰기
+        </div>
+    </div>
+    <!-- ===== 개발자 콘솔 끝 ===== -->
+
+    <div id="gameContainer">
+        <canvas id="gameCanvas" width="400" height="600"></canvas>
+        <div id="gameInfo">
+            <div id="difficulty">난이도: 1단계</div>
+            <div id="timer">시간: 0초</div>
+            <div id="bestScore">최고 기록: 0.000초</div>
+        </div>
+        <div class="controls">
+            터치로 점프!
+        </div>
+        <div id="gameOver">
+            <h2>게임 오버!</h2>
+            <p id="finalTime"></p>
+            <p id="newRecord" style="color: #FFD700; display: none;">🎉 신기록!</p>
+            <p id="achievementSummary"></p>
+            <button id="restartBtn">다시 시작</button>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // 오디오 설정 (Web Audio API 사용)
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        const audioContext = new AudioContext();
+        let bgmGainNode = null;
+        let bgmSource = null;
+        let isMusicPlaying = false;
+
+        // 배경음악 생성 (밝고 경쾌한 멜로디)
+        function createBackgroundMusic() {
+            if (isMusicPlaying) return;
+
+            // 오디오 컨텍스트 재개
+            audioContext.resume();
+
+            isMusicPlaying = true;
+            bgmGainNode = audioContext.createGain();
+            bgmGainNode.gain.value = 0.08;
+            bgmGainNode.connect(audioContext.destination);
+
+            // 더 밝고 경쾌한 멜로디: C-E-G-C-G-E-C-D-E
+            const melody = [
+                523.25, 659.25, 783.99, 1046.50, 783.99, 659.25, 523.25, 587.33,
+                659.25, 783.99, 659.25, 523.25, 587.33, 659.25, 523.25, 659.25
+            ];
+
+            // 베이스 라인 (옥타브 아래)
+            const bassLine = [
+                261.63, 329.63, 392.00, 523.25, 392.00, 329.63, 261.63, 293.66,
+                329.63, 392.00, 329.63, 261.63, 293.66, 329.63, 261.63, 329.63
+            ];
+
+            let noteIndex = 0;
+
+            function playNote() {
+                if (!isMusicPlaying) return;
+
+                // 멜로디 파트
+                const osc1 = audioContext.createOscillator();
+                osc1.type = 'triangle';
+                osc1.frequency.value = melody[noteIndex];
+
+                const gain1 = audioContext.createGain();
+                gain1.gain.setValueAtTime(0.04, audioContext.currentTime);
+                gain1.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.35);
+
+                osc1.connect(gain1);
+                gain1.connect(bgmGainNode);
+
+                osc1.start(audioContext.currentTime);
+                osc1.stop(audioContext.currentTime + 0.35);
+
+                // 베이스 파트
+                const osc2 = audioContext.createOscillator();
+                osc2.type = 'sine';
+                osc2.frequency.value = bassLine[noteIndex];
+
+                const gain2 = audioContext.createGain();
+                gain2.gain.setValueAtTime(0.02, audioContext.currentTime);
+                gain2.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.35);
+
+                osc2.connect(gain2);
+                gain2.connect(bgmGainNode);
+
+                osc2.start(audioContext.currentTime);
+                osc2.stop(audioContext.currentTime + 0.35);
+
+                noteIndex = (noteIndex + 1) % melody.length;
+                setTimeout(playNote, 350);
+            }
+
+            playNote();
+        }
+
+        // 죽음 효과음
+        function playDeathSound() {
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+
+            oscillator.type = 'sawtooth';
+            oscillator.frequency.setValueAtTime(400, audioContext.currentTime);
+            oscillator.frequency.exponentialRampToValueAtTime(50, audioContext.currentTime + 0.5);
+
+            gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+
+            oscillator.start(audioContext.currentTime);
+            oscillator.stop(audioContext.currentTime + 0.5);
+        }
+
+        // 점프 효과음
+        function playJumpSound() {
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+
+            oscillator.type = 'sine';
+            oscillator.frequency.setValueAtTime(600, audioContext.currentTime);
+            oscillator.frequency.exponentialRampToValueAtTime(300, audioContext.currentTime + 0.1);
+
+            gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1);
+
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+
+            oscillator.start(audioContext.currentTime);
+            oscillator.stop(audioContext.currentTime + 0.1);
+        }
+
+        // 게임 변수
+        let gameTime = 0;
+        let isGameOver = false;
+        let gameStarted = false;
+        let isPaused = false;
+        let startTime = Date.now();
+        let lastFrameTime = Date.now();
+        let pauseStartTime = 0;
+        let totalPauseTime = 0;
+
+        // 사운드 설정
+        let soundEnabled = true;
+
+        // 로컬 스토리지 관리
+        const STORAGE_KEY = 'jumpGameData';
+        let bestScore = 0;
+        let unlockedAchievements = [];
+
+        // 업적 정의
+        const achievements = [
+            { id: 'survivor_10', name: '생존자', description: '10초 생존', time: 10, unlocked: false },
+            { id: 'survivor_30', name: '도전자', description: '30초 생존', time: 30, unlocked: false },
+            { id: 'survivor_60', name: '전문가', description: '60초 생존', time: 60, unlocked: false },
+            { id: 'survivor_90', name: '마스터', description: '90초 생존', time: 90, unlocked: false },
+            { id: 'survivor_120', name: '전설', description: '120초 생존', time: 120, unlocked: false }
+        ];
+
+        // 파티클 배열
+        let particles = [];
+
+        // ===== 개발자 콘솔 변수 (출시 전 삭제) =====
+        let fpsCounter = 0;
+        let fpsLastTime = Date.now();
+        let currentFPS = 60;
+        let godMode = false; // 무적 모드
+        // ===== 개발자 콘솔 변수 끝 =====
+
+        // 로컬 스토리지 로드
+        function loadGameData() {
+            const data = localStorage.getItem(STORAGE_KEY);
+            if (data) {
+                const parsed = JSON.parse(data);
+                bestScore = parsed.bestScore || 0;
+                unlockedAchievements = parsed.achievements || [];
+
+                // 업적 복원
+                achievements.forEach(ach => {
+                    if (unlockedAchievements.includes(ach.id)) {
+                        ach.unlocked = true;
+                    }
+                });
+            }
+            updateBestScoreDisplay();
+        }
+
+        // 로컬 스토리지 저장
+        function saveGameData() {
+            const data = {
+                bestScore: bestScore,
+                achievements: unlockedAchievements
+            };
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+        }
+
+        // 최고 기록 표시 업데이트
+        function updateBestScoreDisplay() {
+            document.getElementById('bestScore').textContent = `최고 기록: ${bestScore.toFixed(3)}초`;
+        }
+
+        // 파티클 클래스
+        class Particle {
+            constructor(x, y, color, velocityX, velocityY) {
+                this.x = x;
+                this.y = y;
+                this.color = color;
+                this.velocityX = velocityX;
+                this.velocityY = velocityY;
+                this.alpha = 1;
+                this.radius = Math.random() * 3 + 2;
+            }
+
+            update() {
+                this.x += this.velocityX;
+                this.y += this.velocityY;
+                this.velocityY += 0.2; // 중력
+                this.alpha -= 0.02;
+            }
+
+            draw() {
+                ctx.save();
+                ctx.globalAlpha = this.alpha;
+                ctx.fillStyle = this.color;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            }
+
+            isDead() {
+                return this.alpha <= 0;
+            }
+        }
+
+        // 파티클 생성
+        function createParticles(x, y, color, count = 10) {
+            for (let i = 0; i < count; i++) {
+                const angle = (Math.PI * 2 * i) / count;
+                const speed = Math.random() * 3 + 2;
+                const velocityX = Math.cos(angle) * speed;
+                const velocityY = Math.sin(angle) * speed - 2;
+                particles.push(new Particle(x, y, color, velocityX, velocityY));
+            }
+        }
+
+        // 파티클 업데이트 및 그리기
+        function updateAndDrawParticles() {
+            particles = particles.filter(p => !p.isDead());
+            particles.forEach(p => {
+                p.update();
+                p.draw();
+            });
+        }
+
+        // 업적 확인
+        function checkAchievements(time) {
+            achievements.forEach(ach => {
+                if (!ach.unlocked && time >= ach.time) {
+                    ach.unlocked = true;
+                    unlockedAchievements.push(ach.id);
+                    showAchievementNotification(ach);
+                    saveGameData();
+                }
+            });
+        }
+
+        // 업적 알림 표시
+        function showAchievementNotification(achievement) {
+            const notif = document.getElementById('achievementNotification');
+            notif.textContent = `🏆 ${achievement.name} 달성!`;
+            notif.style.display = 'block';
+
+            setTimeout(() => {
+                notif.style.display = 'none';
+            }, 3000);
+        }
+
+        // 진동 피드백 (모바일)
+        function vibrate(duration = 50) {
+            if (navigator.vibrate) {
+                navigator.vibrate(duration);
+            }
+        }
+
+        // 캐릭터 이미지 로드
+        const characterImg = new Image();
+        characterImg.src = 'C:\\Users\\USER\\해보자 스티커.png';
+        let imageLoaded = false;
+        characterImg.onload = function() {
+            imageLoaded = true;
+            // 로딩 완료 후 로딩 화면 숨기기
+            setTimeout(() => {
+                document.getElementById('loadingScreen').style.display = 'none';
+                // 첫 실행 시 튜토리얼 표시
+                if (!localStorage.getItem(STORAGE_KEY)) {
+                    document.getElementById('tutorialScreen').style.display = 'flex';
+                }
+            }, 1000);
+        };
+
+        // 공 설정
+        const ball = {
+            x: 200,
+            y: 100,
+            radius: 15,
+            velocityY: 0,
+            gravity: 0.35,
+            jumpPower: -9,
+            canJump: true
+        };
+
+        // 장애물 배열
+        let obstacles = [];
+        let obstacleSpeed = 2;
+        let obstacleSpawnRate = 120; // 프레임 단위
+        let frameCount = 0;
+
+        // 난이도 설정
+        let difficultyLevel = 1;
+        const maxDifficulty = 15;
+
+        // 장애물 생성
+        function createObstacle() {
+            const elapsedTime = gameStarted ? (Date.now() - startTime) / 1000 : 0;
+
+            // 시간에 따라 간격이 점점 좁아짐 (최소 85px까지 감소 - 150초에 도달)
+            const maxGap = 280;
+            const minGap = 85;
+            const gapReduction = Math.min(elapsedTime * 1.3, maxGap - minGap); // 1초당 1.3px 감소
+            const gap = Math.max(minGap, maxGap - gapReduction);
+
+            const gapPosition = Math.random() * (canvas.height - gap - 100) + 50;
+
+            obstacles.push({
+                x: canvas.width,
+                topHeight: gapPosition,
+                bottomY: gapPosition + gap,
+                width: 50,
+                passed: false
+            });
+        }
+
+        // 난이도 업데이트
+        function updateDifficulty() {
+            const elapsedTime = gameStarted ? (Date.now() - startTime) / 1000 : 0;
+
+            // 시간에 따라 속도가 점점 빨라짐 (초반 속도 2, 최대 5.5배까지 - 150초에 도달)
+            const speedMultiplier = Math.min(1 + (elapsedTime * 0.03), 5.5); // 1초당 3% 증가, 최대 5.5배
+            obstacleSpeed = 2 * speedMultiplier;
+
+            // 장애물 생성 간격도 점점 짧아짐 (최소 25프레임까지 - 150초에 도달)
+            const spawnReduction = Math.min(elapsedTime * 0.633, 95);
+            obstacleSpawnRate = Math.max(25, 120 - spawnReduction);
+
+            // 난이도 레벨 표시 (10초마다 1단계씩 증가)
+            const newLevel = Math.min(Math.floor(elapsedTime / 10) + 1, maxDifficulty);
+            if (newLevel !== difficultyLevel) {
+                difficultyLevel = newLevel;
+                document.getElementById('difficulty').textContent = `난이도: ${difficultyLevel}단계`;
+            }
+        }
+
+        // 캐릭터 이미지 그리기
+        function drawBall() {
+            const centerX = ball.x;
+            const centerY = ball.y;
+            const size = ball.radius * 2; // 이미지 크기 (직경)
+
+            // ===== 개발자 콘솔: 무적 모드 시각 효과 (출시 전 삭제) =====
+            if (godMode) {
+                const hue = (Date.now() / 10) % 360;
+                ctx.shadowBlur = 20;
+                ctx.shadowColor = `hsl(${hue}, 100%, 50%)`;
+            }
+            // ===== 개발자 콘솔: 무적 모드 시각 효과 끝 =====
+
+            // 이미지가 로드되었으면 이미지 그리기, 아니면 기본 원 그리기
+            if (imageLoaded) {
+                ctx.save();
+
+                // 무적 모드일 때 색상 필터 적용
+                if (godMode) {
+                    const hue = (Date.now() / 10) % 360;
+                    ctx.filter = `hue-rotate(${hue}deg) brightness(1.2)`;
+                }
+
+                // 이미지를 중심점 기준으로 그리기
+                ctx.drawImage(
+                    characterImg,
+                    centerX - size,
+                    centerY - size,
+                    size * 2,
+                    size * 2
+                );
+
+                ctx.restore();
+            } else {
+                // 이미지 로딩 중일 때는 기본 원 표시
+                ctx.beginPath();
+                ctx.arc(centerX, centerY, ball.radius, 0, Math.PI * 2);
+                ctx.fillStyle = godMode ? `hsl(${(Date.now() / 10) % 360}, 100%, 50%)` : '#FFD54F';
+                ctx.fill();
+                ctx.strokeStyle = '#5D4037';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+            }
+
+            // ===== 개발자 콘솔: 무적 모드 섀도우 리셋 (출시 전 삭제) =====
+            if (godMode) {
+                ctx.shadowBlur = 0;
+            }
+            // ===== 개발자 콘솔: 무적 모드 섀도우 리셋 끝 =====
+        }
+
+        // 장애물 그리기
+        function drawObstacles() {
+            obstacles.forEach(obstacle => {
+                // 위쪽 장애물
+                const gradient1 = ctx.createLinearGradient(obstacle.x, 0, obstacle.x + obstacle.width, 0);
+                gradient1.addColorStop(0, '#2E7D32');
+                gradient1.addColorStop(1, '#4CAF50');
+
+                ctx.fillStyle = gradient1;
+                ctx.fillRect(obstacle.x, 0, obstacle.width, obstacle.topHeight);
+                ctx.strokeStyle = '#1B5E20';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(obstacle.x, 0, obstacle.width, obstacle.topHeight);
+
+                // 아래쪽 장애물
+                const gradient2 = ctx.createLinearGradient(obstacle.x, obstacle.bottomY, obstacle.x + obstacle.width, canvas.height);
+                gradient2.addColorStop(0, '#2E7D32');
+                gradient2.addColorStop(1, '#4CAF50');
+
+                ctx.fillStyle = gradient2;
+                ctx.fillRect(obstacle.x, obstacle.bottomY, obstacle.width, canvas.height - obstacle.bottomY);
+                ctx.strokeStyle = '#1B5E20';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(obstacle.x, obstacle.bottomY, obstacle.width, canvas.height - obstacle.bottomY);
+            });
+        }
+
+        // 충돌 감지
+        function checkCollision() {
+            // ===== 개발자 콘솔: 무적 모드 (출시 전 삭제) =====
+            if (godMode) return; // 무적 모드일 때는 충돌 무시
+            // ===== 개발자 콘솔: 무적 모드 끝 =====
+
+            // 바닥과 천장 충돌
+            if (ball.y + ball.radius > canvas.height || ball.y - ball.radius < 0) {
+                endGame();
+                return;
+            }
+
+            // 장애물 충돌
+            obstacles.forEach(obstacle => {
+                if (ball.x + ball.radius > obstacle.x &&
+                    ball.x - ball.radius < obstacle.x + obstacle.width) {
+
+                    if (ball.y - ball.radius < obstacle.topHeight ||
+                        ball.y + ball.radius > obstacle.bottomY) {
+                        endGame();
+                    }
+                }
+            });
+        }
+
+        // 공 업데이트
+        function updateBall() {
+            if (gameStarted) {
+                ball.velocityY += ball.gravity;
+                ball.y += ball.velocityY;
+            }
+        }
+
+        // 장애물 업데이트
+        function updateObstacles() {
+            if (!gameStarted) return;
+
+            obstacles.forEach((obstacle, index) => {
+                obstacle.x -= obstacleSpeed;
+
+                // 화면 밖으로 나간 장애물 제거
+                if (obstacle.x + obstacle.width < 0) {
+                    obstacles.splice(index, 1);
+                }
+            });
+
+            // 새 장애물 생성
+            frameCount++;
+            if (frameCount > obstacleSpawnRate) {
+                createObstacle();
+                frameCount = 0;
+            }
+        }
+
+        // 게임 시작
+        function startGame() {
+            if (!gameStarted && !isGameOver) {
+                gameStarted = true;
+                startTime = Date.now();
+                createBackgroundMusic(); // 배경음악 시작
+            }
+        }
+
+        // 점프
+        function jump() {
+            if (!gameStarted) {
+                startGame();
+                return; // 게임 시작 시에는 점프하지 않음
+            }
+            if (isPaused) return; // 일시정지 중에는 점프 불가
+            if (ball.canJump && !isGameOver && gameStarted) {
+                ball.velocityY = ball.jumpPower;
+                ball.canJump = false;
+                if (soundEnabled) playJumpSound(); // 점프 효과음
+                createParticles(ball.x, ball.y, '#FFD54F', 8); // 점프 파티클
+                vibrate(30); // 진동 피드백
+            }
+        }
+
+        // 게임 종료
+        function endGame() {
+            if (isGameOver) return;
+
+            isGameOver = true;
+            isMusicPlaying = false; // 배경음악 중지
+            if (soundEnabled) playDeathSound(); // 죽음 효과음
+
+            const finalTime = parseFloat(((Date.now() - startTime - totalPauseTime) / 1000).toFixed(3));
+            document.getElementById('finalTime').textContent = `기록: ${finalTime.toFixed(3)}초`;
+
+            // 충돌 파티클
+            createParticles(ball.x, ball.y, '#FF6B6B', 20);
+            vibrate(200); // 강한 진동
+
+            // 신기록 확인
+            const newRecord = document.getElementById('newRecord');
+            if (finalTime > bestScore) {
+                bestScore = finalTime;
+                saveGameData();
+                updateBestScoreDisplay();
+                newRecord.style.display = 'block';
+            } else {
+                newRecord.style.display = 'none';
+            }
+
+            // 업적 요약
+            const unlockedCount = achievements.filter(a => a.unlocked).length;
+            document.getElementById('achievementSummary').textContent =
+                `업적: ${unlockedCount}/${achievements.length} 달성`;
+
+            document.getElementById('gameOver').style.display = 'block';
+        }
+
+        // 게임 리셋
+        function resetGame() {
+            ball.x = 200;
+            ball.y = 100;
+            ball.velocityY = 0;
+            ball.canJump = true;
+
+            gameTime = 0;
+            isGameOver = false;
+            gameStarted = false;
+            isPaused = false;
+            obstacles = [];
+            particles = [];
+            frameCount = 0;
+            difficultyLevel = 1;
+            obstacleSpeed = 2;
+            obstacleSpawnRate = 120;
+            totalPauseTime = 0;
+
+            startTime = Date.now();
+
+            document.getElementById('difficulty').textContent = '난이도: 1단계';
+            document.getElementById('timer').textContent = '시간: 0초';
+            document.getElementById('gameOver').style.display = 'none';
+            document.getElementById('pauseScreen').style.display = 'none';
+
+            gameLoop();
+        }
+
+        // ===== 개발자 콘솔 업데이트 함수 (출시 전 삭제) =====
+        function updateDevConsole() {
+            const elapsedTime = gameStarted ? (Date.now() - startTime) / 1000 : 0;
+
+            // 현재 간격 계산
+            const maxGap = 280;
+            const minGap = 85;
+            const gapReduction = Math.min(elapsedTime * 1.3, maxGap - minGap);
+            const currentGap = Math.max(minGap, maxGap - gapReduction);
+
+            // 속도 배율 계산
+            const speedMultiplier = Math.min(1 + (elapsedTime * 0.03), 5.5);
+
+            // FPS 계산
+            fpsCounter++;
+            const now = Date.now();
+            if (now - fpsLastTime >= 1000) {
+                currentFPS = fpsCounter;
+                fpsCounter = 0;
+                fpsLastTime = now;
+            }
+
+            // 개발자 콘솔 업데이트
+            document.getElementById('devTime').textContent = elapsedTime.toFixed(3) + 's';
+            document.getElementById('devSpeed').textContent = obstacleSpeed.toFixed(2);
+            document.getElementById('devSpeedMult').textContent = speedMultiplier.toFixed(2) + 'x';
+            document.getElementById('devGap').textContent = Math.round(currentGap) + 'px';
+            document.getElementById('devSpawn').textContent = Math.round(obstacleSpawnRate) + 'f';
+            document.getElementById('devObstacles').textContent = obstacles.length;
+            document.getElementById('devFPS').textContent = currentFPS;
+
+            // 무적 모드 표시
+            const godModeEl = document.getElementById('devGodMode');
+            if (godMode) {
+                godModeEl.textContent = 'ON';
+                godModeEl.style.color = '#00ff00';
+            } else {
+                godModeEl.textContent = 'OFF';
+                godModeEl.style.color = '#ff0000';
+            }
+        }
+        // ===== 개발자 콘솔 업데이트 함수 끝 =====
+
+        // 게임 루프
+        function gameLoop() {
+            if (isGameOver) return;
+            if (isPaused) {
+                requestAnimationFrame(gameLoop);
+                return;
+            }
+
+            // ===== 개발자 콘솔 업데이트 (출시 전 삭제) =====
+            updateDevConsole();
+            // ===== 개발자 콘솔 업데이트 끝 =====
+
+            // 캔버스 클리어
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // 난이도별 배경 색상 변화
+            const elapsedTime = gameStarted ? (Date.now() - startTime - totalPauseTime) / 1000 : 0;
+            let bgColor1, bgColor2;
+
+            if (difficultyLevel <= 5) {
+                bgColor1 = '#87CEEB'; // 하늘색
+                bgColor2 = '#E0F6FF';
+            } else if (difficultyLevel <= 10) {
+                bgColor1 = '#FFA07A'; // 주황색
+                bgColor2 = '#FFE4B5';
+            } else {
+                bgColor1 = '#FF6B6B'; // 빨간색
+                bgColor2 = '#FFB4B4';
+            }
+
+            // 배경 그라디언트
+            const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+            gradient.addColorStop(0, bgColor1);
+            gradient.addColorStop(1, bgColor2);
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // 구름 효과
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+            ctx.beginPath();
+            ctx.arc(100, 100, 40, 0, Math.PI * 2);
+            ctx.arc(130, 95, 50, 0, Math.PI * 2);
+            ctx.arc(160, 100, 40, 0, Math.PI * 2);
+            ctx.fill();
+
+            // 게임 시작 전 안내 메시지
+            if (!gameStarted) {
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+                ctx.fillRect(50, 250, 300, 100);
+                ctx.fillStyle = '#FFFFFF';
+                ctx.font = 'bold 24px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText('터치하여', 200, 285);
+                ctx.fillText('게임을 시작하세요!', 200, 320);
+                ctx.textAlign = 'left';
+            }
+
+            // 게임 시간 업데이트
+            if (gameStarted) {
+                const elapsedTime = (Date.now() - startTime - totalPauseTime) / 1000;
+                const displayTime = elapsedTime.toFixed(3);
+                const currentTime = Math.floor(elapsedTime);
+
+                // 매 프레임마다 난이도 업데이트 (속도와 간격이 실시간으로 변함)
+                updateDifficulty();
+
+                // 업적 확인
+                checkAchievements(elapsedTime);
+
+                if (currentTime !== gameTime) {
+                    gameTime = currentTime;
+                    document.getElementById('timer').textContent = `시간: ${displayTime}초`;
+                }
+
+                // 우측 상단에 시간 표시
+                const timeStr = elapsedTime.toFixed(3);
+
+                // 배경 박스
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.75)';
+                ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
+                ctx.shadowBlur = 10;
+                ctx.shadowOffsetX = 0;
+                ctx.shadowOffsetY = 4;
+                ctx.fillRect(canvas.width - 160, 15, 145, 55);
+                ctx.shadowBlur = 0;
+                ctx.shadowOffsetX = 0;
+                ctx.shadowOffsetY = 0;
+
+                // 테두리
+                ctx.strokeStyle = '#FFD700';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(canvas.width - 160, 15, 145, 55);
+
+                // 타이틀
+                ctx.fillStyle = '#FFD700';
+                ctx.font = 'bold 14px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText('TIME', canvas.width - 87.5, 35);
+
+                // 시간 표시
+                ctx.fillStyle = '#FFFFFF';
+                ctx.font = 'bold 22px Consolas, monospace';
+                ctx.textAlign = 'center';
+                ctx.fillText(timeStr + 's', canvas.width - 87.5, 60);
+
+                ctx.textAlign = 'left';
+            }
+
+            // 업데이트
+            updateBall();
+            updateObstacles();
+
+            // 그리기
+            drawObstacles();
+            drawBall();
+            updateAndDrawParticles(); // 파티클 그리기
+
+            // 충돌 감지
+            checkCollision();
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        // 이벤트 리스너 - 터치 및 클릭
+        function handleJump() {
+            jump();
+            setTimeout(() => {
+                ball.canJump = true;
+            }, 100);
+        }
+
+        // 터치 이벤트 (모바일)
+        canvas.addEventListener('touchstart', (e) => {
+            e.preventDefault(); // 기본 터치 동작 방지
+            handleJump();
+        });
+
+        // 클릭 이벤트 (PC)
+        canvas.addEventListener('click', () => {
+            handleJump();
+        });
+
+        // ===== 개발자 콘솔: 키보드 치트키 (출시 전 삭제) =====
+        document.addEventListener('keydown', (e) => {
+            // 스페이스바로도 점프 가능 (개발 편의용)
+            if (e.code === 'Space') {
+                e.preventDefault();
+                handleJump();
+            }
+
+            // 무적 모드
+            if (e.code === 'KeyG') {
+                godMode = !godMode;
+                console.log('무적 모드:', godMode ? 'ON' : 'OFF');
+            }
+
+            // 시간 건너뛰기
+            if (e.code === 'KeyT' && gameStarted) {
+                startTime -= 20000; // 20초 = 20000ms
+                const newElapsedTime = (Date.now() - startTime) / 1000;
+                console.log('시간 점프: +20초 (현재:', newElapsedTime.toFixed(3) + 's)');
+            }
+        });
+        // ===== 개발자 콘솔: 키보드 치트키 끝 =====
+
+        document.getElementById('restartBtn').addEventListener('click', resetGame);
+
+        // UI 버튼 이벤트
+        // 사운드 토글
+        document.getElementById('soundBtn').addEventListener('click', () => {
+            soundEnabled = !soundEnabled;
+            document.getElementById('soundBtn').textContent = soundEnabled ? '🔊' : '🔇';
+            if (!soundEnabled) {
+                isMusicPlaying = false;
+            } else if (gameStarted && !isGameOver) {
+                createBackgroundMusic();
+            }
+        });
+
+        // 일시정지
+        document.getElementById('pauseBtn').addEventListener('click', () => {
+            if (isGameOver || !gameStarted) return;
+
+            isPaused = !isPaused;
+            document.getElementById('pauseBtn').textContent = isPaused ? '▶️' : '⏸️';
+            document.getElementById('pauseScreen').style.display = isPaused ? 'flex' : 'none';
+
+            if (isPaused) {
+                pauseStartTime = Date.now();
+                isMusicPlaying = false;
+            } else {
+                totalPauseTime += Date.now() - pauseStartTime;
+                if (soundEnabled) {
+                    createBackgroundMusic();
+                }
+            }
+        });
+
+        // 전체화면
+        document.getElementById('fullscreenBtn').addEventListener('click', () => {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen().catch(err => {
+                    console.log('전체화면 실패:', err);
+                });
+            } else {
+                document.exitFullscreen();
+            }
+        });
+
+        // 튜토리얼 닫기
+        document.getElementById('tutorialCloseBtn').addEventListener('click', () => {
+            document.getElementById('tutorialScreen').style.display = 'none';
+        });
+
+        // 화면 리사이즈 및 방향 전환 처리
+        function resizeCanvas() {
+            const container = document.getElementById('gameContainer');
+            const maxWidth = window.innerWidth - 40;
+            const maxHeight = window.innerHeight - 200;
+
+            let newWidth = 400;
+            let newHeight = 600;
+
+            // 세로 모드 (모바일)
+            if (window.innerWidth < window.innerHeight) {
+                newWidth = Math.min(maxWidth, 400);
+                newHeight = newWidth * 1.5;
+            }
+            // 가로 모드 (모바일 또는 태블릿)
+            else if (window.innerWidth < 800) {
+                newHeight = Math.min(maxHeight, 400);
+                newWidth = newHeight * 0.667;
+            }
+
+            // 캔버스 크기는 유지하고 CSS로 스케일링
+            const scaleX = newWidth / 400;
+            const scaleY = newHeight / 600;
+            const scale = Math.min(scaleX, scaleY);
+
+            canvas.style.width = (400 * scale) + 'px';
+            canvas.style.height = (600 * scale) + 'px';
+        }
+
+        window.addEventListener('resize', resizeCanvas);
+        window.addEventListener('orientationchange', () => {
+            setTimeout(resizeCanvas, 100);
+        });
+
+        // 초기 설정
+        loadGameData();
+        resizeCanvas();
+
+        // 초기 렌더링
+        gameLoop();
+    </script>
+</body>
+</html>
